@@ -31,9 +31,12 @@ The script must be added to run every n minutes so it gets the values from the e
   h - This help text
   e - Get the energy data and publish it to your home-assistant
   d - Show data being gathered
+  m - Generate dicovery package for Home-assistant to get the entities from the MQTT
+  c - Clear MQTT
 
 Usage:
 Get energy data > $(basename "$0") -e
+Generate energy entities for HASS discovery > $(basename "$0") -m
 
 HOW-TO GET THE DATA FROM THE ENERGY METER
 -----------------------------------------
@@ -53,42 +56,83 @@ exit 0
 
 
 getEnergyData () {
-	# Get the data from Tasmota
-	EnergyData=$(curl -s $EnergyMeterURI/cs?c2=)
-	# Identify the variables from data
-	EnergyVars=( $(echo $EnergyData | sed 's/MQT/\n/g' | grep "$EnergyMeterMQTTTopic" | tail -n 50 | sed 's/.*{\"//' | sed 's/\".*//' | sort | uniq ) );
+  # Get the data from Tasmota
+  EnergyData=$(curl -s $EnergyMeterURI/cs?c2=)
+  # Identify the variables from data
+  EnergyVars=( $(echo $EnergyData | sed 's/MQT/\n/g' | grep "$EnergyMeterMQTTTopic" | tail -n 50 | sed 's/.*{\"//' | sed 's/\".*//' | sort | uniq ) );
 
-	# Re-arrange this stuff to send to Home-assistant
-	for EnergyEntity in "${EnergyVars[@]}";
-	do
-		EnergyEntityData=$(echo $EnergyData | sed 's/MQT/\n/g' | grep $EnergyEntity | sed 's/.*:{//' | sed 's/}}.*//' | sed 's/.*://' | tail -n 1);
+  # Re-arrange this stuff to send to Home-assistant
+  for EnergyEntity in "${EnergyVars[@]}";
+  do
+    EnergyEntityData=$(echo $EnergyData | sed 's/MQT/\n/g' | grep $EnergyEntity | sed 's/.*:{//' | sed 's/}}.*//' | sed 's/.*://' | tail -n 1);
                 # Add data to home-assistant
                 curl -s -k -X POST -H "Authorization: Bearer $HAToken" \
                 -H "Content-Type: application/json" \
                 -d '{"state": "'$EnergyEntityData'", "attributes": {"friendly_name":"'"$EnergyEntity"'","icon": "mdi:chart-line"}}' \
                 $PROTOCOL://$HOST_IP_OR_NAME:$PORT_NUMBER/api/states/sensor.energy_"$EnergyEntity" >/dev/null 2>&1
-	done
+  done
 
   exit 0
 }
 
 showData () {
-	# Get the data from Tasmota
-	EnergyData=$(curl -s $EnergyMeterURI/cs?c2=)
-	# Identify the variables from data
-	EnergyVars=( $(echo $EnergyData | sed 's/MQT/\n/g' | grep "$EnergyMeterMQTTTopic" | tail -n 50 | sed 's/.*{\"//' | sed 's/\".*//' | sort | uniq ) );
+  # Get the data from Tasmota
+  EnergyData=$(curl -s $EnergyMeterURI/cs?c2=)
+  # Identify the variables from data
+  EnergyVars=( $(echo $EnergyData | sed 's/MQT/\n/g' | grep "$EnergyMeterMQTTTopic" | tail -n 50 | sed 's/.*{\"//' | sed 's/\".*//' | sort | uniq ) );
 
-	# Re-arrange this stuff to send to Home-assistant
-	for EnergyEntity in "${EnergyVars[@]}";
-	do
-		EnergyEntityData=$(echo $EnergyData | sed 's/MQT/\n/g' | grep $EnergyEntity | sed 's/.*:{//' | sed 's/}}.*//' | sed 's/.*://' | tail -n 1);
-		echo $EnergyEntity $EnergyEntityData
-	done
+  # Re-arrange this stuff to send to Home-assistant
+  for EnergyEntity in "${EnergyVars[@]}";
+  do
+    EnergyEntityData=$(echo $EnergyData | sed 's/MQT/\n/g' | grep $EnergyEntity | sed 's/.*:{//' | sed 's/}}.*//' | sed 's/.*://' | tail -n 1);
+    echo $EnergyEntity $EnergyEntityData
+  done
 
   exit 0
 }
 
-while getopts ':deh' OPTION; do
+sendDiscoveryMQTT () {
+  # Get the data from Tasmota
+  EnergyData=$(curl -s $EnergyMeterURI/cs?c2=)
+  # Identify the variables from data
+  EnergyVars=( $(echo $EnergyData | sed 's/MQT/\n/g' | grep "$EnergyMeterMQTTTopic" | tail -n 50 | sed 's/.*{\"//' | sed 's/\".*//' | sort | uniq ) );
+
+  # Re-arrange this stuff to send to Home-assistant
+  for EnergyEntity in "${EnergyVars[@]}";
+  do
+    EnergyEntityData=$(echo $EnergyData | sed 's/MQT/\n/g' | grep $EnergyEntity | sed 's/.*:{//' | sed 's/}}.*//' | sed 's/.*://' | tail -n 1);
+    EntityValue="$(./$(basename "$0") -d | grep $EnergyEntity | sed 's/.*\ //')"
+    if [[ $EntityValue == *.* ]] ; then
+        NumerType="float"
+    else
+        NumerType="int"
+    fi
+    HASSCreatEntity='homeassistant/sensor/energy_'$EnergyEntity'/config {"name":"'$EnergyEntity'","state_topic":"'$EnergyMeterMQTTTopic'","value_template":"{{value_json.LANDYS.'$EnergyEntity'}}","retain":"true","icon": "mdi:chart-line","device_class":"none"}' 
+    payload=$(echo $HASSCreatEntity | sed 's/\ /\%20/g' | sed 's/\"/\%22/g' | sed 's/[{]/\%7B/g' | sed 's/[}]/\%7D/g' | sed 's/:/\%3A/g' | sed 's/,/\%2C/g' )
+   curl $EnergyMeterURI/cm?cmnd=Publish%20$payload
+  done
+
+  exit 0
+}
+
+clearDiscoveryMQTT () {
+  # Get the data from Tasmota
+  EnergyData=$(curl -s $EnergyMeterURI/cs?c2=)
+  # Identify the variables from data
+  EnergyVars=( $(echo $EnergyData | sed 's/MQT/\n/g' | grep "$EnergyMeterMQTTTopic" | tail -n 50 | sed 's/.*{\"//' | sed 's/\".*//' | sort | uniq ) );
+
+  # Re-arrange this stuff to send to Home-assistant
+  for EnergyEntity in "${EnergyVars[@]}";
+  do
+    EnergyEntityData=$(echo $EnergyData | sed 's/MQT/\n/g' | grep $EnergyEntity | sed 's/.*:{//' | sed 's/}}.*//' | sed 's/.*://' | tail -n 1);
+    curl -s $EnergyMeterURI/cm?cmnd=Publish%20'homeassistant/sensor/'"energy_$EnergyEntity"'/config'%20%20
+  done
+
+  exit 0
+}
+
+
+while getopts ':cdehm' OPTION; do
   case "$OPTION" in
     e)
       getEnergyData
@@ -96,8 +140,14 @@ while getopts ':deh' OPTION; do
     h)
       usage
       ;;
+    c)
+      clearDiscoveryMQTT
+      ;;
     d)
       showData
+      ;;
+    m)
+      sendDiscoveryMQTT
       ;;
     ?)
       usage
