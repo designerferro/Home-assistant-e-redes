@@ -3,6 +3,7 @@ set -e
 set -u
 set -o pipefail
 
+# Start secrets.sh file
 # Change this values to match your Home-assistant
 PROTOCOL="https"
 HOST_IP_OR_NAME="YOUR_HOME_ASSISTANT"
@@ -14,9 +15,12 @@ EnergyMeterURI='http://YOUR_TASMOTA'
 EnergyMeterMQTTTopic='tele/tasmota_'
 
 # Change the values in this two arrays to match your variables and units of measure. One with all the variable names and another with unit of measure to be used for the entities
-Variables=(Voltagem Current_L1 Energy_T1 Energy_T2 Energy_T3 Energy_TOT Frequency PFactor_L1 Power_L1 TotEneExp);
+Variables=(Voltage_L1 Current_L1 Energy_T1 Energy_T2 Energy_T3 Energy_TOT Frequency PFactor_L1 Power_L1 TotEneExp);
 UnitsOfMeasurement=(V A kWh kWh kWh kWh Hz pu W kWh);
+# End secrets.sh file
 
+# Create a file with the above variables (from star to end) and change this there.
+# Remember to add the file to gitignore if you share your stuff in the cloud.
 source ./secrets.sh
 
 ##########################################
