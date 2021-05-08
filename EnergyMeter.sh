@@ -14,8 +14,10 @@ EnergyMeterURI='http://YOUR_TASMOTA'
 EnergyMeterMQTTTopic='tele/tasmota_'
 
 # Change the values in this two arrays to match your variables and units of measure. One with all the variable names and another with unit of measure to be used for the entities
-Variables=(Current_L1 Energy_T1 Energy_T2 Energy_T3 Energy_TOT Frequency PFactor_L1 Power_L1 TotEneExp);
-UnitsOfMeasurement=(A kWh kWh kWh kWh Hz pu W kWh);
+Variables=(Voltagem Current_L1 Energy_T1 Energy_T2 Energy_T3 Energy_TOT Frequency PFactor_L1 Power_L1 TotEneExp);
+UnitsOfMeasurement=(V A kWh kWh kWh kWh Hz pu W kWh);
+
+source ./secrets.sh
 
 ##########################################
 # Don't change anything bellow this line.#
