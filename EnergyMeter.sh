@@ -13,6 +13,10 @@ HAToken="Home-Assistant-Token-Create_one_at_your_user"
 EnergyMeterURI='http://YOUR_TASMOTA'
 EnergyMeterMQTTTopic='tele/tasmota_'
 
+# Change the values in this two arrays to match your variables and units of measure. One with all the variable names and another with unit of measure to be used for the entities
+Variables=(Current_L1 Energy_T1 Energy_T2 Energy_T3 Energy_TOT Frequency PFactor_L1 Power_L1 TotEneExp);
+UnitsOfMeasurement=(A kWh kWh kWh kWh Hz pu W kWh);
+
 ##########################################
 # Don't change anything bellow this line.#
 # You break it, you fix it.              #
@@ -31,11 +35,10 @@ The script must be added to run every n minutes so it gets the values from the e
   h - This help text
   e - Get the energy data and publish it to your home-assistant
   d - Show data being gathered
-  m - Generate dicovery package for Home-assistant to get the entities from the MQTT
-  c - Clear MQTT
+  m - Generate MQTT discovery package for Home-assistant
 
 Usage:
-Get energy data > $(basename "$0") -e
+Get energy data via HASS http integration > $(basename "$0") -e
 Generate energy entities for HASS discovery > $(basename "$0") -m
 
 HOW-TO GET THE DATA FROM THE ENERGY METER
@@ -54,7 +57,6 @@ EOF
 exit 0
 }
 
-
 getEnergyData () {
   # Get the data from Tasmota
   EnergyData=$(curl -s $EnergyMeterURI/cs?c2=)
@@ -65,11 +67,18 @@ getEnergyData () {
   for EnergyEntity in "${EnergyVars[@]}";
   do
     EnergyEntityData=$(echo $EnergyData | sed 's/MQT/\n/g' | grep $EnergyEntity | sed 's/.*:{//' | sed 's/}}.*//' | sed 's/.*://' | tail -n 1);
+    for i in "${!Variables[@]}";
+    do
+       if [[ "${Variables[$i]}" = "${EnergyEntity}" ]];
+       then
                 # Add data to home-assistant
                 curl -s -k -X POST -H "Authorization: Bearer $HAToken" \
                 -H "Content-Type: application/json" \
-                -d '{"state": "'$EnergyEntityData'", "attributes": {"friendly_name":"'"$EnergyEntity"'","icon": "mdi:chart-line"}}' \
+                -d '{"state": "'$EnergyEntityData'", "attributes": {"friendly_name":"'"$EnergyEntity"'","unit_of_measurement":"'"${UnitsOfMeasurement[${i}]}"'","icon": "mdi:chart-line"}}' \
                 $PROTOCOL://$HOST_IP_OR_NAME:$PORT_NUMBER/api/states/sensor.energy_"$EnergyEntity" >/dev/null 2>&1
+       fi;
+    done
+
   done
 
   exit 0
@@ -81,11 +90,17 @@ showData () {
   # Identify the variables from data
   EnergyVars=( $(echo $EnergyData | sed 's/MQT/\n/g' | grep "$EnergyMeterMQTTTopic" | tail -n 50 | sed 's/.*{\"//' | sed 's/\".*//' | sort | uniq ) );
 
-  # Re-arrange this stuff to send to Home-assistant
+# Re-arrange this stuff to send to Home-assistant
   for EnergyEntity in "${EnergyVars[@]}";
   do
     EnergyEntityData=$(echo $EnergyData | sed 's/MQT/\n/g' | grep $EnergyEntity | sed 's/.*:{//' | sed 's/}}.*//' | sed 's/.*://' | tail -n 1);
-    echo $EnergyEntity $EnergyEntityData
+    for i in "${!Variables[@]}";
+    do
+       if [[ "${Variables[$i]}" = "${EnergyEntity}" ]];
+       then
+           echo $EnergyEntity $EnergyEntityData "${UnitsOfMeasurement[${i}]}"
+       fi;
+    done
   done
 
   exit 0
