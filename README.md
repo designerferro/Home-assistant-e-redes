@@ -1,15 +1,11 @@
 # Home-assistant energy meter with Tasmota and portuguese e-redes
-Quick adding your [e-redes](https://www.e-redes.pt/pt-pt) consumption data into your [Home-assistant](https://www.home-assistant.io/), via your MQTT.
+Quick adding your [e-redes](https://www.e-redes.pt/pt-pt) consumption data into your [Home-Assistant](https://www.home-assistant.io/), via [HTTP integreation from Home-Assistant](https://www.home-assistant.io/integrations/http/).
 
-Portuguese energy seller e-redes has implemented a set of energy meters that, through a HAN port, make available suficient information to create an interface to your MQTT, via a Tasmota special crafted firmware (FW). 
+Portuguese energy seller e-redes has implemented a set of energy meters that, through a HAN port, make available suficient information. We are using a [Tasmota special crafted firmware (FW)](https://github.com/nikito7/edp_box_modbus/tree/dev/tasmota) to do this. 
 
-Starting with version 5.11.1e, Tasmota development of MQTT integration to Home-assistant was halted. So,aAfter instaling the phisical interface, each user has to create by hand each sensor to get the state information being sent to MQTT, wich is a fastidious thing. 
+This is a Bash script that uses curl to get everything done.
 
-To send the information to the Home-Assistant configuration topic (homeassistant/light/kitchen/config), the idea was creating this script that will force feed the information manualy via [MQTT publication of the expected Home-assistant configurations message](https://www.home-assistant.io/docs/mqtt/discovery/).
-
-The user intending to use this script has to configure the MQTT in Tasmota to publish to eredes/tasmota_[SENSOR IDENTITY]/state.
-
-The FW will publish the following information: 
+The FW will publish information much like the one bellow in a URL: 
 - eredes/tasmota_0D505E/SENSOR {"Time":"2021-04-19T00:34:48","LANDYS":{"Tarifa":1}}
 - eredes/tasmota_0D505E/SENSOR {"Time":"2021-04-19T00:34:51","LANDYS":{"TotEneExp":0.0}}
 - eredes/tasmota_0D505E/SENSOR {"Time":"2021-04-19T00:34:54","LANDYS":{"Voltage_L1":242}}
@@ -22,7 +18,7 @@ The FW will publish the following information:
 - eredes/tasmota_0D505E/SENSOR {"Time":"2021-04-19T00:35:00","LANDYS":{"Energy_T3":2881.1}}
 - eredes/tasmota_0D505E/SENSOR {"Time":"2021-04-19T00:35:00","LANDYS":{"Energy_TOT":6642}}
 
-The result should be the creation of the following Entities per sensor:
+This script looks for the variables, gets the last data for each variable and posts it to your Home-Assistant via HTTP:
 - Tarifa
 - TotEneExp
 - Voltage_L1
@@ -34,4 +30,3 @@ The result should be the creation of the following Entities per sensor:
 - Energy_T2
 - Energy_T3
 - Energy_TOT
-
