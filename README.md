@@ -1,4 +1,4 @@
-# HA_e-redes_Tasmota_MQTT
+# Home-assistant energy meter with Tasmota and portuguese e-redes
 Quick adding your [e-redes](https://www.e-redes.pt/pt-pt) consumption data into your [Home-assistant](https://www.home-assistant.io/), via your MQTT.
 
 Portuguese energy seller e-redes has implemented a set of energy meters that, through a HAN port, make available suficient information to create an interface to your MQTT, via a Tasmota special crafted firmware (FW). 
