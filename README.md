@@ -34,3 +34,4 @@ The result should be the creation of the following Entities per sensor:
 - Energy_T2
 - Energy_T3
 - Energy_TOT
+
